@@ -1,6 +1,7 @@
 export const RISK_LEVELS = { HIGH: 'HIGH', MEDIUM: 'MEDIUM', LOW: 'LOW' }
 
 export const CASE_STATUS = {
+  COMPLETED: 'completed',
   PENDING: 'pending', REVIEWED: 'reviewed',
   ESCALATED: 'escalated', CLOSED: 'closed',
 }
@@ -8,6 +9,7 @@ export const CASE_STATUS = {
 export const TABLES = {
   PATIENT_PROFILES: 'patient_profiles',
   TRIAGE_CASES: 'triage_cases',
+  DOCTOR_PROFILES: 'doctor_profiles',
 };
 
 export const RISK_CONFIG = {
@@ -78,3 +80,35 @@ export const QUICK_REPLIES = {
   severity: ['1–3 (mild)', '4–6 (moderate)', '7–10 (severe)'],
   yesNo: ['Yes', 'No', "I'm not sure"],
 }
+
+export const USER_ROLES = {
+  PATIENT: 'patient',
+  DOCTOR: 'doctor', 
+  AMBULANCE: 'ambulance',
+}
+
+export const AMBULANCE_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  EN_ROUTE: 'en_route',
+  ARRIVED: 'arrived',
+  TRANSPORTING: 'transporting',
+  COMPLETED: 'completed',
+  DISMISSED: 'dismissed',
+}
+
+export const AMBULANCE_TABLES = {
+  AMBULANCE_PROFILES: 'ambulance_profiles',
+  AMBULANCE_CASES: 'ambulance_cases',
+  AMBULANCE_STATS: 'ambulance_stats',
+}
+
+export const VEHICLE_TYPES = ['Basic', 'Advanced', 'ICU']
+
+
+export const MEDISCAN_CONFIG = {
+  SAFE: { color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', label: 'SAFE' },
+  CAUTION: { color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', label: 'CAUTION' },
+  PRESCRIPTION_ONLY: { color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', label: 'PRESCRIPTION ONLY' },
+}
+

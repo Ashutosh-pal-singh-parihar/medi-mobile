@@ -92,6 +92,7 @@ export default function TriageResultScreen() {
         doctor_id: doctorId,
         sent_at: new Date().toISOString()
       });
+      setResult(prev => ({ ...prev, sent_to_doctor: true, doctor_id: doctorId }));
       triggerSuccess();
       Alert.alert(t('report_sent'), t('report_sent'));
     } catch (e) {
@@ -196,9 +197,9 @@ export default function TriageResultScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(600)} style={styles.footer}>
-          {result?.risk_level === 'HIGH' ? (
+          {result?.risk_level === 'HIGH' && (
             <TouchableOpacity 
-              style={[styles.primaryBtn, { backgroundColor: theme.colors.riskHigh }]}
+              style={[styles.primaryBtn, { backgroundColor: theme.colors.riskHigh, marginBottom: 8 }]}
               onPress={() => {
                 if (sosTimerRef.current) clearTimeout(sosTimerRef.current);
                 router.push('/(patient)/triage/sos');
@@ -207,6 +208,13 @@ export default function TriageResultScreen() {
               <Ionicons name="alert-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={styles.primaryBtnText}>{t('seek_help_now')}</Text>
             </TouchableOpacity>
+          )}
+
+          {result?.sent_to_doctor ? (
+            <View style={styles.sentNotice}>
+              <Ionicons name="checkmark-circle" size={18} color={theme.colors.riskLow} />
+              <Text style={styles.sentNoticeText}>{t('report_sent')}</Text>
+            </View>
           ) : (
             <TouchableOpacity 
               style={[styles.primaryBtn, sending && styles.btnDisabled]}
@@ -452,5 +460,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 20,
+  },
+  sentNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+  },
+  sentNoticeText: {
+    ...theme.typography.label,
+    color: '#16A34A',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

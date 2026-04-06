@@ -259,18 +259,32 @@ export default function HomeScreen() {
           )}
         </ScrollView>
 
-        {/* FAB Button */}
-        <Animated.View style={[styles.fabContainer, fabStyle, isOffline && { opacity: 0.5 }]}>
-          <TouchableOpacity 
-            style={[styles.fab, isOffline && { backgroundColor: theme.colors.textTertiary }]} 
-            activeOpacity={0.9} 
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            onPress={() => startTriage()}
-          >
-            <Ionicons name="add" size={32} color="#FFFFFF" />
-          </TouchableOpacity>
-        </Animated.View>
+        {/* FAB Stack */}
+        <View style={styles.fabContainer}>
+          {/* Triage FAB (Primary) */}
+          <Animated.View style={[styles.fabWrapper, fabStyle, isOffline && { opacity: 0.5 }]}>
+            <TouchableOpacity 
+              style={[styles.fab, isOffline && { backgroundColor: theme.colors.textTertiary }]} 
+              activeOpacity={0.9} 
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+              onPress={() => startTriage()}
+            >
+              <Ionicons name="add" size={32} color="#FFFFFF" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* MediScan Shortcut (Secondary) */}
+          <Animated.View entering={FadeInDown.delay(500)} style={[styles.scanFabWrapper, isOffline && { opacity: 0.5 }]}>
+            <TouchableOpacity 
+              style={styles.scanFab} 
+              activeOpacity={0.8}
+              onPress={() => router.push('/(patient)/mediscan')}
+            >
+              <Ionicons name="scan" size={20} color={theme.colors.primary} />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </View>
     </ScreenWrapper>
   );
@@ -491,6 +505,11 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 32 : 24,
     right: 24,
     zIndex: 100,
+    alignItems: 'center',
+    gap: 12,
+  },
+  fabWrapper: {
+    // Wrapper for animation
   },
   fab: {
     width: 64,
@@ -500,5 +519,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.md,
+  },
+  scanFabWrapper: {
+    // Wrapper
+  },
+  scanFab: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.bgSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLight,
+    ...theme.shadows.sm,
   },
 });

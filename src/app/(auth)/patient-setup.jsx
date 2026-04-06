@@ -102,6 +102,7 @@ export default function PatientSetupScreen() {
       };
 
       const newProfile = await authService.createPatientProfile(profileData);
+      await authService.setUserRole(user.id, 'patient');
       setPatientProfile(newProfile);
       router.replace('/(patient)/home');
     } catch (e) {

@@ -4,6 +4,8 @@ import useAuthStore from '../../../store/auth.store';
 import { aiService } from '../services/ai.service';
 import { triageService } from '../services/triage.service';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
+import { supabase } from '../../../config/supabase';
 
 export const useTriageSession = () => {
   const router = useRouter();
@@ -50,10 +52,48 @@ export const useTriageSession = () => {
         ai_explanation: result.ai_explanation || result.explanation || '',
         ai_confidence: result.ai_confidence || 0.8,
         detected_symptoms: result.detected_symptoms || [],
-        status: 'pending',
+        status: 'completed',
+        sent_to_doctor: false,
       });
 
       if (!savedCase?.id) throw new Error('Failed to save triage session');
+
+      // 🚑 AMBULANCE ALERT LOGIC
+      if (result.risk_level === 'HIGH') {
+        try {
+          // Get patient's current location
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const location = await Location.getCurrentPositionAsync({});
+            
+            // Find all online ambulance operators
+            const { data: onlineAmbulances } = await supabase
+              .from('ambulance_profiles')
+              .select('id')
+              .eq('is_online', true);
+            
+            // Create an ambulance_cases alert for each online operator
+            if (onlineAmbulances && onlineAmbulances.length > 0) {
+              const alerts = onlineAmbulances.map(amb => ({
+                triage_case_id: savedCase.id,
+                ambulance_id: amb.id,
+                patient_id: patientProfile.id,
+                patient_lat: location.coords.latitude,
+                patient_lng: location.coords.longitude,
+                status: 'pending',
+              }));
+              
+              await supabase
+                .from('ambulance_cases')
+                .insert(alerts);
+              
+              console.log('Ambulance alerts sent to', onlineAmbulances.length, 'operators');
+            }
+          }
+        } catch (err) {
+          console.error('Failed to send ambulance alert:', err);
+        }
+      }
 
       setResult({ ...result, id: savedCase.id });
       setSessionId(savedCase.id);

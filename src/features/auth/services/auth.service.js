@@ -11,10 +11,13 @@ export const authService = {
     return data
   },
 
-  async signUp(email, password) {
+  async signUp(email, password, metadata = {}) {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
+      options: {
+        data: metadata,
+      },
     })
     if (error) throw error
     return data
@@ -56,14 +59,63 @@ export const authService = {
     }
   },
 
+  async getDoctorProfile(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('doctor_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      if (error) {
+        console.log('getDoctorProfile error:', error)
+        return null
+      }
+      return data
+    } catch (e) {
+      console.log('getDoctorProfile catch:', e)
+      return null
+    }
+  },
+
   async createPatientProfile(profile) {
     const { data, error } = await supabase
       .from('patient_profiles')
-      .insert(profile)
+      .upsert(profile)
       .select()
       .single()
     if (error) throw error
     return data
+  },
+
+  async createDoctorProfile(profile) {
+    const { data, error } = await supabase
+      .from('doctor_profiles')
+      .upsert(profile)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async getUserRole(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle()
+      if (error) return null
+      return data?.role || null
+    } catch (e) {
+      return null
+    }
+  },
+
+  async setUserRole(userId, role) {
+    const { error } = await supabase
+      .from('app_users')
+      .upsert({ id: userId, role })
+    if (error) throw error
   },
 
   onAuthStateChange(callback) {

@@ -157,6 +157,24 @@ export const STRINGS = {
     coming_soon: "Coming Soon",
     log_out: "Log Out",
     log_out_confirm: "Are you sure you want to log out?",
+
+    // Ambulance
+    ambulance_operator: "Ambulance Operator",
+    ambulance_subtitle: "Respond to emergency triage alerts",
+    vehicle_details: "Vehicle Details",
+    vehicle_number: "Vehicle Number",
+    vehicle_type: "Vehicle Type",
+    ready_to_save_lives: "Ready to save lives",
+    online_status: "You are ONLINE — receiving alerts",
+    offline_status: "You are OFFLINE — not receiving alerts",
+    no_active_alerts: "No active alerts",
+    notified_on_high_risk: "You will be notified when HIGH risk patients need help",
+    accept: "Accept",
+    dismiss: "Dismiss",
+    arrived_at_patient: "I've Arrived at Patient",
+    patient_on_board: "Patient On Board — Start Transport",
+    complete_ride: "Complete Ride — Patient Delivered",
+    cancel_ride: "Cancel Ride",
   },
   hi: {
     // Auth screens
@@ -316,5 +334,23 @@ export const STRINGS = {
     coming_soon: "जल्द आ रहा है",
     log_out: "लॉगआउट",
     log_out_confirm: "क्या आप वाकई लॉग आउट करना चाहते हैं?",
+
+    // Ambulance
+    ambulance_operator: "एम्बुलेंस ऑपरेटर",
+    ambulance_subtitle: "आपातकालीन ट्राइएज अलर्ट का उत्तर दें",
+    vehicle_details: "वाहन विवरण",
+    vehicle_number: "वाहन नंबर",
+    vehicle_type: "वाहन का प्रकार",
+    ready_to_save_lives: "जान बचाने के लिए तैयार",
+    online_status: "आप ऑनलाइन हैं — अलर्ट प्राप्त कर रहे हैं",
+    offline_status: "आप ऑफलाइन हैं — अलर्ट प्राप्त नहीं कर रहे हैं",
+    no_active_alerts: "कोई सक्रिय अलर्ट नहीं",
+    notified_on_high_risk: "जब उच्च जोखिम वाले मरीजों को मदद की आवश्यकता होगी तो आपको सूचित किया जाएगा",
+    accept: "स्वीकार करें",
+    dismiss: "खारिज करें",
+    arrived_at_patient: "मैं मरीज के पास पहुँच गया हूँ",
+    patient_on_board: "मरीज सवार है — परिवहन शुरू करें",
+    complete_ride: "राइड पूरी करें — मरीज अस्पताल पहुँचा दिया गया",
+    cancel_ride: "राइड रद्द करें",
   }
 };

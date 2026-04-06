@@ -6,7 +6,7 @@ import { theme } from '../../styles/theme';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLanguage } from '../../hooks/useLanguage';
 
 export default function RoleSelectScreen() {
@@ -30,7 +30,18 @@ export default function RoleSelectScreen() {
     return {
       transform: [{ scale: withSpring(isSelected ? 1.05 : 1) }],
       borderWidth: withSpring(isSelected ? 2 : 0),
-      borderColor: theme.colors.primary,
+      borderColor: '#8B5CF6',
+      opacity: withTiming(selectedRole && !isSelected ? 0.7 : 1, { duration: 200 }),
+      backgroundColor: '#FFFFFF',
+    };
+  });
+
+  const ambulanceCardStyle = useAnimatedStyle(() => {
+    const isSelected = selectedRole === 'ambulance';
+    return {
+      transform: [{ scale: withSpring(isSelected ? 1.05 : 1) }],
+      borderWidth: withSpring(isSelected ? 2 : 0),
+      borderColor: theme.colors.riskHigh,
       opacity: withTiming(selectedRole && !isSelected ? 0.7 : 1, { duration: 200 }),
       backgroundColor: '#FFFFFF',
     };
@@ -43,6 +54,8 @@ export default function RoleSelectScreen() {
         t('doctor_web_only'),
         [{ text: t('cancel'), style: 'cancel' }]
       );
+    } else if (selectedRole === 'ambulance') {
+      router.push('/(auth)/ambulance-setup');
     } else {
       router.push('/(auth)/patient-setup');
     }
@@ -72,6 +85,7 @@ export default function RoleSelectScreen() {
             </View>
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>{t('patient')}</Text>
+              <Text style={styles.cardDesc}>Get AI-powered health assessment</Text>
             </View>
           </Animated.View>
         </TouchableOpacity>
@@ -93,6 +107,29 @@ export default function RoleSelectScreen() {
             </View>
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>{t('doctor')}</Text>
+              <Text style={styles.cardDesc}>Review cases and manage patients</Text>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={() => setSelectedRole('ambulance')}
+        >
+          <Animated.View style={[styles.roleCard, ambulanceCardStyle]}>
+            <View style={styles.iconCircle}>
+              <LinearGradient 
+                colors={['#EF4444', '#B91C1C']} 
+                style={styles.gradientRing}
+              >
+                <View style={styles.iconInner}>
+                  <MaterialCommunityIcons name="ambulance" size={32} color="#DC2626" />
+                </View>
+              </LinearGradient>
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>{t('ambulance_operator')}</Text>
+              <Text style={styles.cardDesc}>{t('ambulance_subtitle')}</Text>
             </View>
           </Animated.View>
         </TouchableOpacity>
@@ -103,7 +140,7 @@ export default function RoleSelectScreen() {
             onPress={handleContinue} 
             disabled={!selectedRole}
             fullWidth
-            style={selectedRole === 'patient' ? styles.primaryBtn : styles.ghostBtn}
+            style={selectedRole === 'patient' ? styles.primaryBtn : (selectedRole === 'ambulance' ? styles.ambulanceBtn : styles.ghostBtn)}
           />
         </View>
       </View>
@@ -182,6 +219,9 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: theme.colors.primary,
+  },
+  ambulanceBtn: {
+    backgroundColor: theme.colors.riskHigh,
   },
   ghostBtn: {
     backgroundColor: theme.colors.textTertiary,

@@ -1,15 +1,23 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '../../../store/auth.store'
 import { authService } from '../services/auth.service'
+import { ambulanceService } from '../../ambulance/services/ambulance.service'
 
 export function useAuth() {
   const {
     user,
     patientProfile,
+    doctorProfile,
+    ambulanceProfile,
+    role,
+    isDoctor,
     isAuthenticated,
     isLoading,
     setUser,
     setPatientProfile,
+    setDoctorProfile,
+    setAmbulanceProfile,
+    setRole,
     setLoading,
     clearAuth,
   } = useAuthStore()
@@ -17,7 +25,6 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true
 
-    // Check existing session on mount
     const initAuth = async () => {
       try {
         const session = await authService.getSession()
@@ -25,8 +32,26 @@ export function useAuth() {
 
         if (session?.user) {
           setUser(session.user)
-          const profile = await authService.getPatientProfile(session.user.id)
-          if (mounted && profile) setPatientProfile(profile)
+          
+          // Get role: Check metadata first, then DB
+          const metaRole = session.user.user_metadata?.role
+          const dbRole = await authService.getUserRole(session.user.id)
+          const userRole = metaRole || dbRole
+          
+          if (mounted && userRole) setRole(userRole)
+          
+          // Fetch corresponding profile
+          if (userRole === 'patient') {
+            const pProfile = await authService.getPatientProfile(session.user.id)
+            if (mounted && pProfile) setPatientProfile(pProfile)
+          } else if (userRole === 'doctor') {
+            const dProfile = await authService.getDoctorProfile(session.user.id)
+            if (mounted && dProfile) setDoctorProfile(dProfile)
+          } else if (userRole === 'ambulance') {
+            // Give a tiny moment for DB trigger if it was a fresh signup
+            const aProfile = await ambulanceService.getProfile(session.user.id)
+            if (mounted && aProfile) setAmbulanceProfile(aProfile)
+          }
         }
       } catch (e) {
         console.log('initAuth error:', e)
@@ -37,21 +62,27 @@ export function useAuth() {
 
     initAuth()
 
-    // Listen for auth state changes
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event:', event, session?.user?.id)
         if (!mounted) return
-
         try {
-          if (event === 'SIGNED_IN' && session?.user) {
+          if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+            setLoading(true) // STOP THE FLICKER
             setUser(session.user)
-            const profile = await authService.getPatientProfile(session.user.id)
-            if (mounted && profile) setPatientProfile(profile)
+            const metaRole = session.user.user_metadata?.role
+            const dbRole = await authService.getUserRole(session.user.id)
+            const userRole = metaRole || dbRole
+            if (mounted && userRole) setRole(userRole)
+            
+            if (userRole === 'patient') {
+              const pProfile = await authService.getPatientProfile(session.user.id)
+              if (mounted && pProfile) setPatientProfile(pProfile)
+            } else if (userRole === 'ambulance') {
+              const aProfile = await ambulanceService.getProfile(session.user.id)
+              if (mounted && aProfile) setAmbulanceProfile(aProfile)
+            }
           } else if (event === 'SIGNED_OUT') {
             clearAuth()
-          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-            setUser(session.user)
           }
         } catch (e) {
           console.log('onAuthStateChange error:', e)
@@ -67,28 +98,17 @@ export function useAuth() {
     }
   }, [])
 
-  const signIn = async (email, password) => {
-    const data = await authService.signIn(email, password)
-    return data
-  }
-
-  const signOut = async () => {
-    try {
-      await authService.signOut()
-    } catch (e) {
-      console.log('signOut error:', e)
-    } finally {
-      clearAuth()
-    }
-  }
-
   return {
     user,
     patientProfile,
+    doctorProfile,
+    ambulanceProfile,
+    role,
+    isDoctor,
     isAuthenticated,
     isLoading,
-    signIn,
-    signOut,
+    signIn: authService.signIn,
+    signOut: async () => { await authService.signOut(); clearAuth() },
     signUp: authService.signUp,
   }
 }

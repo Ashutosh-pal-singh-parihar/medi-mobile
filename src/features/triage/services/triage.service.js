@@ -102,17 +102,21 @@ export const triageService = {
    * Get list of available doctors for sharing reports
    */
   async getDoctors() {
-    // Note: This expects a 'doctors' table or views. 
-    // If not existing, we can fallback to a mock or empty list.
     const { data, error } = await supabase
-      .from('doctors')
+      .from(TABLES.DOCTOR_PROFILES)
       .select('*')
       .order('full_name', { ascending: true });
 
     if (error) {
-      console.warn('[TriageService] Doctors table error (might not exist):', error.message);
-      return []; // Return empty instead of crashing
+      console.warn('[TriageService] Fetching doctors error:', error.message);
+      return [];
     }
-    return data;
+    
+    // Map hospital_name to hospital for UI compatibility
+    return (data || []).map(doc => ({
+      ...doc,
+      hospital: doc.hospital_name || 'Hospital',
+      specialty: doc.specialty || 'General Practitioner'
+    }));
   }
 };

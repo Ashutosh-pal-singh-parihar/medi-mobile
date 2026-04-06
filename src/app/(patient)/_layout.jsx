@@ -46,6 +46,14 @@ export default function PatientLayout() {
       />
 
       <Tabs.Screen 
+        name="mediscan" 
+        options={{
+          title: 'MediScan',
+          tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? 'scan' : 'scan-outline'} size={size} color={color} />,
+        }} 
+      />
+
+      <Tabs.Screen 
         name="profile" 
         options={{
           title: 'Profile',

@@ -194,13 +194,13 @@ export default function ReportDetailScreen() {
           </View>
         )}
 
-        {report?.risk_level !== 'HIGH' && !report?.sent_to_doctor && (
+        {!report?.sent_to_doctor && (
           <TouchableOpacity 
             style={[styles.sendBtn, sending && { opacity: 0.7 }]}
             onPress={() => setShowDoctorModal(true)}
             disabled={sending}
           >
-            <Ionicons name="medical" size={18} color="#FFFFFF" />
+            <Ionicons name="paper-plane" size={18} color="#FFFFFF" />
             <Text style={styles.sendBtnText}>{sending ? t('next') : t('send_to_doctor')}</Text>
           </TouchableOpacity>
         )}

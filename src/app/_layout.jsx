@@ -12,7 +12,7 @@ export default function RootLayout() {
   // MUST call useAuth() here to initialize the listener
   useAuth()
 
-  const { isAuthenticated, isLoading, patientProfile } = useAuthStore()
+  const { isAuthenticated, isLoading, patientProfile, ambulanceProfile, role } = useAuthStore()
   const segments = useSegments()
   const router = useRouter()
 
@@ -34,34 +34,37 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)'
     const inPatientGroup = segments[0] === '(patient)'
+    const inAmbulanceGroup = segments[0] === '(ambulance)'
 
-    console.log('Nav check:', { isAuthenticated, hasProfile: !!patientProfile, segments: segments[0] })
+    console.log('Nav check:', { isAuthenticated, role, inAuthGroup, segments: segments[0] })
 
-    if (!isAuthenticated && inPatientGroup) {
-      router.replace('/(auth)/splash')
-      return
-    }
-
-    if (isAuthenticated && !patientProfile && inPatientGroup) {
-      router.replace('/(auth)/patient-setup')
-      return
-    }
-
-    if (isAuthenticated && patientProfile && inAuthGroup) {
-      router.replace('/(patient)/home')
-      return
-    }
-
-    if (isAuthenticated && !patientProfile && inAuthGroup) {
-      // Only redirect to patient-setup if not already going there
-      const currentScreen = segments[1]
-      if (currentScreen !== 'patient-setup' && currentScreen !== 'role-select') {
-        router.replace('/(auth)/patient-setup')
+    if (isAuthenticated) {
+      if (role === 'ambulance') {
+        if (!ambulanceProfile && segments[1] !== 'ambulance-setup') {
+          router.replace('/(auth)/ambulance-setup')
+        } else if (ambulanceProfile && (inAuthGroup || inPatientGroup)) {
+          router.replace('/(ambulance)/dashboard')
+        }
+      } else if (role === 'patient') {
+        if (!patientProfile && segments[1] !== 'patient-setup') {
+          router.replace('/(auth)/patient-setup')
+        } else if (patientProfile && (inAuthGroup || inAmbulanceGroup)) {
+          router.replace('/(patient)/home')
+        }
+      } else if (!role && inAuthGroup) {
+        // No role yet, but signed in. Should be at role-select or profile-setup
+        if (segments[1] !== 'role-select' && segments[1] !== 'patient-setup' && segments[1] !== 'ambulance-setup') {
+           router.replace('/(auth)/role-select')
+        }
       }
-      return
+    } else {
+      // Not authenticated
+      if (!inAuthGroup) {
+        router.replace('/(auth)/splash')
+      }
     }
 
-  }, [isAuthenticated, patientProfile, isLoading, fontsLoaded, segments])
+  }, [isAuthenticated, patientProfile, ambulanceProfile, role, isLoading, fontsLoaded, segments])
 
   if (!fontsLoaded || isLoading) return null
 
