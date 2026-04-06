@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "MediTriage AI",
+    "slug": "meditriage-ai",
+    "version": "1.0.0",
+    "scheme": "meditriage",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F8FC"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow MediTriage to access your microphone for voice input."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow MediTriage to access your photos to upload symptom images."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "fonts": [
+      "./assets/fonts/DMSans/DMSans-Regular.ttf",
+      "./assets/fonts/DMSans/DMSans-Medium.ttf",
+      "./assets/fonts/DMSans/DMSans-SemiBold.ttf",
+      "./assets/fonts/DMSans/DMSans-Bold.ttf"
+    ]
+  }
+}

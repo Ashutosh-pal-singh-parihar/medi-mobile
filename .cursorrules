@@ -1,0 +1,58 @@
+# .cursorrules
+
+## Project: MediTriage AI — Mobile App (Patient)
+## Stack: React Native + Expo Managed, JavaScript only, Zustand, Supabase
+
+## Purpose
+Patient-facing mobile app for AI-powered medical triage.
+Patients describe symptoms via voice/text/image → AI analyzes →
+triage result (LOW/MEDIUM/HIGH) → saved to Supabase → doctor sees it on web dashboard.
+
+## Architecture Rules
+- Expo Router for navigation (file-based, in src/app/)
+- ALL Supabase calls in src/features/[feature]/services/
+- NO direct AI calls from any component or hook
+- ALL AI calls via Supabase Edge Functions (ai.service.js only)
+- State: Zustand only (auth.store.js, triage.store.js)
+- Animations: Reanimated 3 only (never Animated from RN core)
+- Use 'expo install' not 'npm install' for Expo packages
+
+## Folder Mapping
+- Screens: src/app/(patient)/ and src/app/(auth)/
+- Feature components: src/features/[feature]/components/
+- Hooks: src/features/[feature]/hooks/
+- Services: src/features/[feature]/services/
+- Shared UI: src/components/ui/
+- Store: src/store/
+- Utils: src/utils/
+- Theme: src/styles/theme.js
+
+## Navigation Structure
+- (auth) group: splash, login, signup, verify, role-select, patient-setup
+- (patient) group with tabs: home, triage/, reports, profile
+- Triage is a nested stack inside (patient): start → session → result → sos
+
+## Supabase Tables
+- patient_profiles: read/write patient data
+- triage_cases: INSERT new cases, SELECT history (patient's own only)
+- ai_feedback: SELECT only (read doctor's note on past cases)
+
+## Risk Levels (EXACT strings — must match web dashboard)
+- "HIGH" → red, Emergency SOS auto-shown, haptic heavy × 3
+- "MEDIUM" → amber, see doctor soon, haptic medium × 1
+- "LOW" → green, home care, haptic light × 1
+
+## Message Shape (triage_cases.messages jsonb array)
+{ role: 'user'|'assistant', content: string, type: 'text'|'voice'|'image', timestamp: ISO8601 }
+
+## Env Variables (EXPO_PUBLIC_ prefix required for client access)
+- EXPO_PUBLIC_SUPABASE_URL
+- EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+## DO NOT
+- Use TypeScript
+- Use bare React Native (Expo Managed only)
+- Call Gemini directly from app
+- Use AsyncStorage directly (use expo-secure-store for sensitive data)
+- Use StyleSheet colors inline — always import from theme.js
+- Implement anything requiring native Xcode/Android Studio setup
