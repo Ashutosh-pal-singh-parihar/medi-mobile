@@ -38,6 +38,99 @@ const Chip = ({ text, color = theme.colors.primary }) => (
   </View>
 );
 
+const AvoidSection = ({ avoid }) => {
+  if (!avoid) return null;
+
+  const groups = [
+    {
+      label: 'Food & drinks',
+      dotColor: '#E24B4A',
+      items: (avoid.food || []).map(item => ({ text: item, severity: 'high' })),
+    },
+    {
+      label: 'Other medicines',
+      dotColor: '#D85A30',
+      items: (avoid.medicines || []).map(item => ({ text: item, severity: 'high' })),
+    },
+    {
+      label: 'If you have these conditions',
+      dotColor: '#A32D2D',
+      // We will mark allergies as 'medium', others 'high' 
+      items: (avoid.conditions || []).map(item => ({ 
+        text: item, 
+        severity: item.toLowerCase().includes('allergy') || item.toLowerCase().includes('caution') ? 'medium' : 'high' 
+      })),
+    },
+  ].filter(g => g.items.length > 0);
+
+  if (groups.length === 0) return null;
+
+  const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
+
+  return (
+    <View style={styles.avoidCard}>
+      {/* Red header bar */}
+      <View style={styles.avoidHeader}>
+        <View style={styles.avoidHeaderLeft}>
+          <View style={styles.avoidHeaderIconBox}>
+            <Ionicons name="warning-outline" size={15} color="#fff" />
+          </View>
+          <View>
+            <Text style={styles.avoidHeaderTitle}>What to avoid</Text>
+            <Text style={styles.avoidHeaderSub}>Read carefully before taking</Text>
+          </View>
+        </View>
+        <View style={styles.avoidCountPill}>
+          <Text style={styles.avoidCountText}>{totalItems} items</Text>
+        </View>
+      </View>
+
+      {/* Body */}
+      <View style={styles.avoidBody}>
+        {groups.map((group, gi) => (
+          <View key={gi} style={[styles.avoidGroup, gi === groups.length - 1 && { marginBottom: 0 }]}>
+            {/* Group label */}
+            <View style={styles.groupLabelRow}>
+              <View style={[styles.groupDot, { backgroundColor: group.dotColor }]} />
+              <Text style={styles.groupTitle}>{group.label}</Text>
+            </View>
+
+            {/* Items */}
+            {group.items.map((item, ii) => {
+              // Split "ItemName — description" if dash exists, else use whole text
+              const parts = item.text.split(' — ');
+              const mainText = parts[0];
+              const subText = parts[1] || null;
+              const isHigh = item.severity === 'high';
+
+              return (
+                <View key={ii} style={[styles.avoidItem, ii === group.items.length - 1 && { marginBottom: 0 }]}>
+                  <View style={[styles.itemIconBox, { backgroundColor: isHigh ? '#FCEBEB' : '#FAEEDA' }]}>
+                    <Ionicons
+                      name={isHigh ? 'close-circle' : 'alert-circle'}
+                      size={13}
+                      color={isHigh ? '#D85A30' : '#854F0B'}
+                    />
+                  </View>
+                  <View style={styles.itemTextCol}>
+                    <Text style={styles.itemMain}>{mainText}</Text>
+                    {subText && <Text style={styles.itemSub}>{subText}</Text>}
+                  </View>
+                  <View style={[styles.severityPill, isHigh ? styles.sevHigh : styles.sevMed]}>
+                    <Text style={isHigh ? styles.sevHighText : styles.sevMedText}>
+                      {isHigh ? 'High risk' : 'Caution'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 export const MediScanResultCard = ({ data, onReset }) => {
   if (!data) return null;
 
@@ -117,45 +210,7 @@ export const MediScanResultCard = ({ data, onReset }) => {
           </View>
 
           {/* Avoid - Red Section */}
-          <View style={styles.avoidSection}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.riskHigh }]}>🚫 What to Avoid</Text>
-            
-            {data.avoid?.food?.length > 0 && (
-              <View style={styles.avoidSubSection}>
-                <Text style={styles.avoidLabel}>Food & Drink</Text>
-                {data.avoid.food.map((item, idx) => (
-                  <InfoRow key={idx} icon="close-outline" text={item} color={theme.colors.riskHigh} />
-                ))}
-              </View>
-            )}
-
-            {data.avoid?.medicines?.length > 0 && (
-              <View style={styles.avoidSubSection}>
-                <Text style={styles.avoidLabel}>Other Medicines</Text>
-                {data.avoid.medicines.map((item, idx) => (
-                  <InfoRow key={idx} icon="close-outline" text={item} color={theme.colors.riskHigh} />
-                ))}
-              </View>
-            )}
-
-            {data.avoid?.activities?.length > 0 && (
-              <View style={styles.avoidSubSection}>
-                <Text style={styles.avoidLabel}>Activities</Text>
-                {data.avoid.activities.map((item, idx) => (
-                  <InfoRow key={idx} icon="close-outline" text={item} color={theme.colors.riskHigh} />
-                ))}
-              </View>
-            )}
-
-            {data.avoid?.conditions?.length > 0 && (
-              <View style={styles.avoidSubSection}>
-                <Text style={styles.avoidLabel}>Medical Conditions</Text>
-                {data.avoid.conditions.map((item, idx) => (
-                  <InfoRow key={idx} icon="close-outline" text={item} color={theme.colors.riskHigh} />
-                ))}
-              </View>
-            )}
-          </View>
+          <AvoidSection avoid={data.avoid} />
 
           {/* Side Effects */}
           <View style={styles.section}>
@@ -337,21 +392,133 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 4,
   },
-  avoidSection: {
-    backgroundColor: '#FFF5F5',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 24,
+  avoidCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: '#F09595',
+    marginBottom: 10,
   },
-  avoidSubSection: {
+  avoidHeader: {
+    backgroundColor: '#E24B4A',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  avoidHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avoidHeaderIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avoidHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  avoidHeaderSub: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 1,
+  },
+  avoidCountPill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  avoidCountText: {
+    fontSize: 11,
+    color: '#fff',
+  },
+  avoidBody: {
+    backgroundColor: '#FFF8F8',
+    padding: 12,
+  },
+  avoidGroup: {
     marginBottom: 12,
   },
-  avoidLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.riskHigh,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+  groupLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  groupDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 2,
+  },
+  groupTitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#791F1F',
+    letterSpacing: 0.4,
+  },
+  avoidItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: '#F7C1C1',
     marginBottom: 6,
+  },
+  itemIconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  itemTextCol: {
+    flex: 1,
+  },
+  itemMain: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#3D1515',
+    lineHeight: 18,
+  },
+  itemSub: {
+    fontSize: 11,
+    color: '#A32D2D',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  severityPill: {
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  sevHigh: {
+    backgroundColor: '#E24B4A',
+  },
+  sevHighText: {
+    fontSize: 10,
+    color: '#fff',
+  },
+  sevMed: {
+    backgroundColor: '#FAEEDA',
+  },
+  sevMedText: {
+    fontSize: 10,
+    color: '#633806',
   },
   effectBox: {
     flexDirection: 'row',

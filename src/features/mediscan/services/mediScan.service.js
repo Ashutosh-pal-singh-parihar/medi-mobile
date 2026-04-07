@@ -3,7 +3,7 @@ import { supabase } from '../../../config/supabase'
 export const mediScanService = {
   /**
    * Analyzes a medicine image using the Supabase Edge Function
-   * @param {string} imageBase64 - Base64 encoded image string (including data prefix)
+   * @param {string} imageBase64 - Base64 encoded image string (raw base64, no data prefix)
    * @param {string} language - 'en' | 'hi'
    */
   async analyzeMedicine(imageBase64, language = 'en') {
@@ -16,10 +16,18 @@ export const mediScanService = {
       });
 
       if (error) {
-        console.error('[MediScanService] Edge Function Error:', error);
-        throw new Error(error.message || 'Failed to analyze medicine');
+        // Extract real error message from FunctionsHttpError
+        let errorMessage = error.message;
+        try {
+          const errorContext = await error.context?.json();
+          if (errorContext?.error) errorMessage = errorContext.error;
+          if (errorContext?.message) errorMessage = errorContext.message;
+        } catch (_) {}
+        console.error('[MediScanService] Real error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
+      // Handle Gemini returning an error for unidentifiable images
       if (data?.error) {
         throw new Error(data.error);
       }

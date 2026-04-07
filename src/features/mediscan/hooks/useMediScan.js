@@ -27,6 +27,13 @@ export const useMediScan = () => {
         language
       );
 
+      // Handle case where Gemini couldn't identify the medicine
+      if (response?.error) {
+        setError(response.error);
+        setStatus('error');
+        return;
+      }
+
       setResult(response);
       setStatus('result');
     } catch (err) {
