@@ -1,4 +1,5 @@
 export const RISK_LEVELS = { HIGH: 'HIGH', MEDIUM: 'MEDIUM', LOW: 'LOW' }
+export const MIN_QUESTIONS = 5;
 
 export const CASE_STATUS = {
   COMPLETED: 'completed',

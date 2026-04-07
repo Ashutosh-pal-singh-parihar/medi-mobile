@@ -1,115 +1,76 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../../styles/theme';
-import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 
-/**
- * VoiceRecorder Component
- * Large circular mic button.
- * Hold to record, release to send.
- * Shows recording duration timer while recording.
- */
-export default function VoiceRecorder({ onStart, onStop, isRecording }) {
-  const [timer, setTimer] = useState(0);
-  const intervalRef = useRef(null);
-  const scale = useSharedValue(1);
+export default function VoiceRecorder({ onRecordingComplete, disabled }) {
+  const { isRecording, startRecording, stopRecording, cancelRecording } = useVoiceRecorder();
+  const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isRecording) {
-      intervalRef.current = setInterval(() => {
-        setTimer(t => t + 1);
-      }, 1000);
-      scale.value = withSpring(1.4);
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
     } else {
-      clearInterval(intervalRef.current);
-      setTimer(0);
-      scale.value = withSpring(1);
+      pulseAnim.setValue(1);
     }
-    return () => clearInterval(intervalRef.current);
   }, [isRecording]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const handlePressIn = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onStart();
-  };
-
-  const handlePressOut = () => {
-    onStop();
+  const handlePress = async () => {
+    if (disabled) return;
+    if (isRecording) {
+      const result = await stopRecording();
+      if (result && onRecordingComplete) {
+        onRecordingComplete(result);
+      }
+    } else {
+      await startRecording();
+    }
   };
 
   return (
     <View style={styles.container}>
+      <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseAnim }], opacity: isRecording ? 0.3 : 0 }]} />
+      <TouchableOpacity
+        style={[styles.micButton, isRecording && styles.micButtonActive, disabled && styles.micButtonDisabled]}
+        onPress={handlePress}
+        disabled={disabled}
+        activeOpacity={0.8}
+      >
+        <Ionicons name={isRecording ? 'stop' : 'mic'} size={28} color="#fff" />
+      </TouchableOpacity>
+      <Text style={styles.label}>
+        {disabled ? 'Voice unavailable' : isRecording ? 'Tap to stop' : 'Tap to speak'}
+      </Text>
       {isRecording && (
-        <View style={styles.timerContainer}>
-          <View style={styles.recordingDot} />
-          <Text style={styles.timerText}>{formatTime(timer)}</Text>
-        </View>
-      )}
-      
-      <Animated.View style={[styles.micWrapper, animatedStyle]}>
-        <TouchableOpacity 
-          style={[styles.micBtn, isRecording && styles.micBtnActive]} 
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={1}
-        >
-          <Ionicons name="mic" size={32} color={isRecording ? "#FFFFFF" : theme.colors.primary} />
+        <TouchableOpacity onPress={cancelRecording} style={styles.cancelBtn}>
+          <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
-      </Animated.View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    width: '100%',
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  container: { alignItems: 'center', paddingVertical: 12 },
+  pulseRing: {
+    position: 'absolute', width: 80, height: 80, borderRadius: 40,
     backgroundColor: '#EF4444',
   },
-  timerText: {
-    ...theme.typography.label,
-    fontSize: 16,
-    color: theme.colors.textPrimary,
+  micButton: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4,
   },
-  micWrapper: {
-    ...theme.shadows.md,
-  },
-  micBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  micBtnActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
+  micButtonActive: { backgroundColor: '#EF4444' },
+  micButtonDisabled: { backgroundColor: '#9CA3AF' },
+  label: { marginTop: 8, fontSize: 13, color: '#6B7280' },
+  cancelBtn: { marginTop: 6 },
+  cancelText: { color: '#EF4444', fontSize: 13 },
 });

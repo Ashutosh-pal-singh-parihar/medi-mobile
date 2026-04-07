@@ -1,75 +1,115 @@
-import { useState } from 'react';
-import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
+import { useState, useRef, useCallback } from 'react';
+import { Audio } from 'expo-av';
 import { Alert } from 'react-native';
-import { useLanguage } from '../../../hooks/useLanguage';
 
-/**
- * useVoiceRecorder Hook
- * Managed voice recording state and base64 conversion.
- * Fixes: Added isRecording checks to prevent IllegalStateException on Android.
- */
-export default function useVoiceRecorder() {
-  const { t } = useLanguage();
+export function useVoiceRecorder() {
   const [isRecording, setIsRecording] = useState(false);
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [audioUri, setAudioUri] = useState(null);
+  const [audioBase64, setAudioBase64] = useState(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const recordingRef = useRef(null);
 
-  const startRecording = async () => {
+  const requestPermission = useCallback(async () => {
     try {
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('permission_required'), t('mic_permission'));
-        return;
-      }
-
-      await audioRecorder.prepareToRecordAsync();
-      
-      // Safety: check if we are still supposed to be recording (user might have released already)
-      audioRecorder.record();
-      setIsRecording(true);
-      console.log('[Voice] Recording started');
-    } catch (error) {
-      console.error('[Voice] Failed to start:', error);
-      setIsRecording(false);
-      Alert.alert('Error', 'Could not start microphone. Please try again.');
-    }
-  };
-
-  /**
-   * Stop recording safely and return base64 audio data.
-   */
-  const stopRecording = async () => {
-    console.log('[Voice] Stop requested, isRecording:', isRecording);
-    
-    if (!isRecording) {
-      return null;
-    }
-
-    try {
-      // 2. Stop the hardware recorder
-      await audioRecorder.stop();
-      setIsRecording(false);
-
-      const uri = audioRecorder.uri;
-      console.log('[Voice] Stop successful, URI:', uri);
-      
-      if (uri) {
-        const base64 = await FileSystem.readAsStringAsync(uri, { 
-          encoding: FileSystem.EncodingType.Base64 
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status === 'granted') {
+        setPermissionGranted(true);
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
         });
-        return { uri, base64 };
+        return true;
+      } else {
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please allow microphone access in Settings to use voice input.',
+          [{ text: 'OK' }]
+        );
+        return false;
       }
-      return null;
-    } catch (error) {
-      console.error('[Voice] Failed to stop:', error.message);
+    } catch (err) {
+      console.error('Permission error:', err);
+      return false;
+    }
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const hasPermission = permissionGranted || await requestPermission();
+      if (!hasPermission) return;
+
+      // Reset any existing recording
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
+
+      setAudioUri(null);
+      setAudioBase64(null);
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+    } catch (err) {
+      console.error('startRecording error:', err);
+      Alert.alert('Recording Error', 'Could not start recording. Please try again.');
+    }
+  }, [permissionGranted, requestPermission]);
+
+  const stopRecording = useCallback(async () => {
+    try {
+      if (!recordingRef.current) return null;
       setIsRecording(false);
+
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+
+      if (!uri) return null;
+      setAudioUri(uri);
+
+      // Convert to base64 for API
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      setAudioBase64(base64);
+      return { uri, base64 };
+    } catch (err) {
+      console.error('stopRecording error:', err);
       return null;
     }
-  };
+  }, []);
+
+  const cancelRecording = useCallback(async () => {
+    try {
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
+      setIsRecording(false);
+      setAudioUri(null);
+      setAudioBase64(null);
+    } catch (err) {
+      console.error('cancelRecording error:', err);
+    }
+  }, []);
 
   return {
     isRecording,
+    audioUri,
+    audioBase64,
+    permissionGranted,
     startRecording,
     stopRecording,
+    cancelRecording,
+    requestPermission,
   };
 }

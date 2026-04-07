@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useTriageStore } from '../../../store/triage.store';
 import useAuthStore from '../../../store/auth.store';
@@ -6,9 +7,14 @@ import { triageService } from '../services/triage.service';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { supabase } from '../../../config/supabase';
+import { MIN_QUESTIONS } from '../../../config/constants';
 
 export const useTriageSession = () => {
   const router = useRouter();
+  const [questionCount, setQuestionCount] = useState(0);
+  const [canFinish, setCanFinish] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+
   const {
     addMessage,
     setAnalyzing,
@@ -33,14 +39,10 @@ export const useTriageSession = () => {
   };
 
   /**
-   * Finalize the triage session:
-   * 1. Validates the result data
-   * 2. Saves to Supabase
-   * 3. Navigates to the result page
+   * Finalize the triage session
    */
   const finalizeSession = async (result, allMessages) => {
     try {
-      // ✅ Safety Sanitization: Throw if critical data is missing
       if (!user?.id) throw new Error('User not authenticated');
       if (!result.risk_level) throw new Error('AI failed to determine risk level');
 
@@ -58,21 +60,17 @@ export const useTriageSession = () => {
 
       if (!savedCase?.id) throw new Error('Failed to save triage session');
 
-      // 🚑 AMBULANCE ALERT LOGIC
+      // AMBULANCE ALERT LOGIC
       if (result.risk_level === 'HIGH') {
         try {
-          // Get patient's current location
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status === 'granted') {
             const location = await Location.getCurrentPositionAsync({});
-            
-            // Find all online ambulance operators
             const { data: onlineAmbulances } = await supabase
               .from('ambulance_profiles')
               .select('id')
               .eq('is_online', true);
             
-            // Create an ambulance_cases alert for each online operator
             if (onlineAmbulances && onlineAmbulances.length > 0) {
               const alerts = onlineAmbulances.map(amb => ({
                 triage_case_id: savedCase.id,
@@ -82,45 +80,39 @@ export const useTriageSession = () => {
                 patient_lng: location.coords.longitude,
                 status: 'pending',
               }));
-              
-              await supabase
-                .from('ambulance_cases')
-                .insert(alerts);
-              
-              console.log('Ambulance alerts sent to', onlineAmbulances.length, 'operators');
+              await supabase.from('ambulance_cases').insert(alerts);
             }
           }
         } catch (err) {
-          console.error('Failed to send ambulance alert:', err);
+          console.error('Ambulance alert failed:', err);
         }
       }
 
       setResult({ ...result, id: savedCase.id });
       setSessionId(savedCase.id);
       setSessionProgress(100);
+      setIsComplete(true);
       triggerRiskHaptic(result.risk_level);
 
       router.replace(`/(patient)/triage/result?id=${savedCase.id}`);
     } catch (e) {
       console.error('[Session] finalizeSession error:', e);
       setAnalyzing(false);
-      
-      // Notify user of error instead of crashing
       addMessage({
         id: generateId() + '_err',
         role: 'assistant',
-        content: `Something went wrong while saving your report: ${e.message}. Please try one more time.`,
+        content: `Something went wrong: ${e.message}. Please try again.`,
         type: 'text',
         timestamp: new Date().toISOString(),
       });
     }
   };
 
-  /**
-   * Start Session: Called once on screen mount.
-   */
   const startSession = async ({ initialInput, inputType, imageBase64, language: lang = 'en' }) => {
     resetSession();
+    setQuestionCount(0);
+    setCanFinish(false);
+    setIsComplete(false);
 
     const userMsg = {
       id: generateId(),
@@ -132,8 +124,7 @@ export const useTriageSession = () => {
     };
 
     addMessage(userMsg);
-
-    const allMessages = useTriageStore.getState().messages;
+    const allMessages = [userMsg];
     setAnalyzing(true);
     setSessionProgress(10);
 
@@ -148,47 +139,40 @@ export const useTriageSession = () => {
       setAnalyzing(false);
       if (!response) return;
 
-      if (response.type === 'question') {
-        const content = response.content || response.text || response.message;
-        if (!content) throw new Error('Missing content in AI question');
-        
-        addMessage({
-          id: generateId() + '_ai',
-          role: 'assistant',
-          content: content,
-          type: 'text',
-          timestamp: new Date().toISOString(),
-          quickReplies: response.quickReplies || [],
-        });
-        setSessionProgress(20);
-      } else if (response.type === 'result') {
-        // ✅ Early Exit Protection: Validate result before finalizing
-        const hasData = response.risk_level && (response.ai_summary || response.summary);
-        if (hasData) {
-          await finalizeSession(response, allMessages);
-        } else {
-          throw new Error('AI returned an incomplete final evaluation');
-        }
-      }
-
+      handleAIResponse(response, allMessages);
     } catch (e) {
       setAnalyzing(false);
       console.error('[Session] startSession error:', e);
-      addMessage({
-        id: generateId() + '_err',
-        role: 'assistant',
-        content: "I'm having trouble understanding. Could you please describe your symptoms again?",
-        type: 'text',
-        timestamp: new Date().toISOString(),
-      });
     }
   };
 
-  /**
-   * Send Message: Handles user text, voice, or image input.
-   */
-  const sendMessage = async (content, type = 'text', lang = 'en', imageBase64 = null) => {
+  const handleAIResponse = (response, allMessages) => {
+    if (response.type === 'question') {
+      const content = response.content || response.text || response.message;
+      const newCount = questionCount + 1;
+      setQuestionCount(newCount);
+
+      if (newCount >= MIN_QUESTIONS) {
+        setCanFinish(true);
+      }
+
+      addMessage({
+        id: generateId() + '_ai',
+        role: 'assistant',
+        content: content,
+        type: 'text',
+        timestamp: new Date().toISOString(),
+        quickReplies: response.quickReplies || [],
+      });
+      setSessionProgress(Math.min(20 + newCount * 10, 95));
+    } else if (response.type === 'result') {
+      finalizeSession(response, allMessages);
+    }
+  };
+
+  const sendMessage = async (content, type = 'text', lang = 'en', imageBase64 = null, forceFinal = false) => {
     if (!content && !imageBase64) return;
+    if (isComplete) return;
 
     const userMsg = {
       id: generateId(),
@@ -196,70 +180,45 @@ export const useTriageSession = () => {
       content: content || '',
       type,
       timestamp: new Date().toISOString(),
+      imageUrl: imageBase64 || null,
     };
 
     addMessage(userMsg);
-
     const allMessages = useTriageStore.getState().messages;
-    const userCount = allMessages.filter((m) => m.role === 'user').length;
 
     setAnalyzing(true);
-    setSessionProgress(Math.min((allMessages.length / 8) * 100, 95));
-
     try {
       const response = await aiService.analyzeSymptoms({
         messages: allMessages,
         imageBase64: imageBase64 || null,
         language: lang,
         patientProfile,
+        forceFinal, // Pass forceFinal flag
       });
 
       setAnalyzing(false);
       if (!response) return;
 
-      if (response.type === 'question') {
-        const aiContent = response.content || response.text || response.message;
-        if (!aiContent) throw new Error('Missing content in AI question');
-
-        addMessage({
-          id: generateId() + '_ai',
-          role: 'assistant',
-          content: aiContent,
-          type: 'text',
-          timestamp: new Date().toISOString(),
-          quickReplies: response.quickReplies || [],
-        });
-      } else if (response.type === 'result') {
-        // ✅ Early Exit Protection: Validate result before finalizing
-        const hasData = response.risk_level && (response.ai_summary || response.summary);
-        if (hasData) {
-          await finalizeSession(response, allMessages);
-        } else {
-          throw new Error('AI returned an incomplete final evaluation');
-        }
-      }
-
+      handleAIResponse(response, allMessages);
     } catch (e) {
       setAnalyzing(false);
       console.error('[Session] sendMessage error:', e);
-      addMessage({
-        id: generateId() + '_err',
-        role: 'assistant',
-        content: "I'm sorry, I couldn't process that. Could you try rephrasing your message?",
-        type: 'text',
-        timestamp: new Date().toISOString(),
-        isError: true,
-      });
     }
   };
 
-  const forceFinish = (lang = 'en') => {
-    const msg =
-      lang === 'hi'
-        ? 'मैंने अपने सभी लक्षण बता दिए हैं। कृपया अब अंतिम मूल्यांकन दें।'
-        : 'I have described all my symptoms. Please give me the final triage assessment now.';
-    sendMessage(msg, 'text', lang);
+  const handleUserFinish = async (lang = 'en') => {
+    const msg = lang === 'hi' 
+      ? 'कृपया अब अंतिम मूल्यांकन दें।' 
+      : 'Please give me the final triage assessment now.';
+    await sendMessage(msg, 'text', lang, null, true);
   };
 
-  return { startSession, sendMessage, forceFinish };
+  return { 
+    startSession, 
+    sendMessage, 
+    handleUserFinish, 
+    questionCount, 
+    canFinish, 
+    isComplete 
+  };
 };

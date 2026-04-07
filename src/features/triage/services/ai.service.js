@@ -49,3 +49,35 @@ export const aiService = {
     }
   },
 }
+
+/**
+ * Sends video keyframes to AI and gets a text description.
+ * The description is then used as a user message in the triage chat.
+ * The video itself is NEVER sent to the triage AI.
+ */
+export async function describeVideoFrames(frames) {
+  // frames = [{ base64: 'data:image/jpeg;base64,...', timeMs: 2000 }, ...]
+  // We send frames to Gemini vision to get a text description
+  // Then that description is injected as a user message in the triage session
+
+  const frameDescriptions = frames.map((f, i) => ({
+    type: 'image_url',
+    image_url: f.base64,
+    label: `Frame ${i + 1} at ${Math.round(f.timeMs / 1000)}s`,
+  }));
+
+  // Call your Supabase Edge Function with a describe-video action
+  const { data, error } = await supabase.functions.invoke('analyze-symptoms', {
+    body: {
+      action: 'describe_video_frames',
+      frames: frameDescriptions,
+      instruction:
+        'Describe what you see in these video frames that is medically relevant. ' +
+        'Focus on visible symptoms: rashes, swelling, wounds, posture, breathing, skin color, movement. ' +
+        'Return a concise 2-3 sentence description suitable for a medical triage assistant.',
+    },
+  });
+
+  if (error) throw error;
+  return data?.description ?? 'Patient uploaded a video showing symptoms.';
+}
