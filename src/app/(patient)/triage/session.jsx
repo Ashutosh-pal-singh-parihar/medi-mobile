@@ -10,6 +10,8 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Keyboard,
+  StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +41,7 @@ export default function TriageSessionScreen() {
   const [inputMode, setInputMode] = useState(initialMethod === 'media' ? 'media' : (initialMethod === 'voice' ? 'voice' : 'text'));
   const [inputText, setInputText] = useState('');
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const { messages, isAnalyzing, addMessage, replaceLastMessage } = useTriageStore();
   const { 
@@ -59,6 +62,27 @@ export default function TriageSessionScreen() {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages.length, isAnalyzing, isVideoProcessing]);
+
+  // Handle keyboard show scroll & visibility
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setIsKeyboardVisible(true);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setIsKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // ── Start session once on mount ───────────────────────────────────────────
   useEffect(() => {
@@ -208,8 +232,8 @@ export default function TriageSessionScreen() {
     <ScreenWrapper bg="#F9FAFB">
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 30}
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose}>
@@ -268,28 +292,30 @@ export default function TriageSessionScreen() {
           }
         />
 
-        <View style={modeStyles.bar}>
-          {[
-            { id: 'text', icon: 'create-outline', label: 'Type' },
-            { id: 'voice', icon: 'mic-outline', label: 'Voice' },
-            { id: 'media', icon: 'attach-outline', label: 'Photo/Video' }
-          ].map((m) => (
-            <TouchableOpacity
-              key={m.id}
-              style={[modeStyles.tab, inputMode === m.id && modeStyles.tabActive]}
-              onPress={() => setInputMode(m.id)}
-            >
-              <Ionicons
-                name={m.icon}
-                size={18}
-                color={inputMode === m.id ? '#3B82F6' : '#6B7280'}
-              />
-              <Text style={[modeStyles.label, inputMode === m.id && modeStyles.labelActive]}>
-                {m.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {!isKeyboardVisible && (
+          <View style={modeStyles.bar}>
+            {[
+              { id: 'text', icon: 'create-outline', label: 'Type' },
+              { id: 'voice', icon: 'mic-outline', label: 'Voice' },
+              { id: 'media', icon: 'attach-outline', label: 'Photo/Video' }
+            ].map((m) => (
+              <TouchableOpacity
+                key={m.id}
+                style={[modeStyles.tab, inputMode === m.id && modeStyles.tabActive]}
+                onPress={() => setInputMode(m.id)}
+              >
+                <Ionicons
+                  name={m.icon}
+                  size={18}
+                  color={inputMode === m.id ? '#3B82F6' : '#6B7280'}
+                />
+                <Text style={[modeStyles.label, inputMode === m.id && modeStyles.labelActive]}>
+                  {m.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <View style={styles.inputContainer}>
           {inputMode === 'text' && renderInputBar()}

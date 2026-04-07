@@ -24,6 +24,9 @@ import useAuthStore from '../../store/auth.store';
 import { useTriageHistory } from '../../features/triage/hooks/useTriageHistory';
 import { RISK_CONFIG } from '../../config/constants';
 import { useLanguage } from '../../hooks/useLanguage';
+import { NotificationBadge } from '../../components/NotificationBadge';
+import { notificationsService } from '../../services/notifications.service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MOCK_TIPS = [
   { id: 1, emoji: '💧', title: 'Stay Hydrated', desc: 'Drink at least 8 glasses of water today.', color: theme.colors.primaryLight },
@@ -44,12 +47,43 @@ export default function HomeScreen() {
   const { messages, sessionId, resetSession } = useTriageStore();
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fabScale = useSharedValue(1);
 
   useEffect(() => {
     loadInitialHistory();
     
+    // Check for unread notifications
+    const checkUnread = async () => {
+      try {
+        const seenStr = await AsyncStorage.getItem('seen_notifications') || '[]';
+        const seen = JSON.parse(seenStr);
+        // We'll simplify: if any doctor_actions or appointments exist for user cases that aren't in 'seen'
+        // But for performance now, we'll just subscribe and count new ones.
+      } catch {}
+    };
+    checkUnread();
+
+    // Subscribe to realtime updates
+    let unsubscribe;
+    if (user?.id) {
+      unsubscribe = notificationsService.subscribeToPatientCaseUpdates(user.id, (payload) => {
+        if (payload.type === 'doctor_action' || payload.type === 'appointment') {
+          setUnreadCount(prev => prev + 1);
+          // Refresh history to show updated status badges
+          refreshHistory();
+          
+          Alert.alert(
+            payload.type === 'appointment' ? 'Appointment Scheduled' : 'Doctor Reviewed Case',
+            'You have a new update on your triage session.'
+          );
+        } else if (payload.type === 'case_update') {
+          refreshHistory();
+        }
+      });
+    }
+
     // Session Recovery Alert
     if (sessionId && messages.length > 0) {
       setTimeout(() => {
@@ -64,10 +98,13 @@ export default function HomeScreen() {
       }, 500);
     }
 
-    const unsubscribe = NetInfo.addEventListener(state => {
+    const netUnsubscribe = NetInfo.addEventListener(state => {
       setIsOffline(!state.isConnected);
     });
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) unsubscribe();
+      netUnsubscribe();
+    };
   }, []);
 
   const onRefresh = async () => {
@@ -122,8 +159,15 @@ export default function HomeScreen() {
           {/* Header Bar */}
           <View style={styles.headerBar}>
             <Avatar uri={patientProfile?.avatar_url} size={42} />
-            <TouchableOpacity style={styles.notifBtn} onPress={() => Alert.alert(t('coming_soon'), '')}>
+            <TouchableOpacity 
+              style={styles.notifBtn} 
+              onPress={() => {
+                setUnreadCount(0);
+                router.push('/(patient)/reports');
+              }}
+            >
               <Ionicons name="notifications-outline" size={24} color={theme.colors.textPrimary} />
+              <NotificationBadge count={unreadCount} show={unreadCount > 0} />
             </TouchableOpacity>
           </View>
 

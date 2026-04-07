@@ -40,15 +40,17 @@ export default function RootLayout() {
 
     if (isAuthenticated) {
       if (role === 'ambulance') {
-        if (!ambulanceProfile && segments[1] !== 'ambulance-setup') {
+        const isSetupComplete = !!(ambulanceProfile && ambulanceProfile.full_name)
+        if (!isSetupComplete && segments[1] !== 'ambulance-setup') {
           router.replace('/(auth)/ambulance-setup')
-        } else if (ambulanceProfile && (inAuthGroup || inPatientGroup)) {
+        } else if (isSetupComplete && (inAuthGroup || inPatientGroup)) {
           router.replace('/(ambulance)/dashboard')
         }
       } else if (role === 'patient') {
-        if (!patientProfile && segments[1] !== 'patient-setup') {
+        const isSetupComplete = !!(patientProfile && patientProfile.full_name)
+        if (!isSetupComplete && segments[1] !== 'patient-setup') {
           router.replace('/(auth)/patient-setup')
-        } else if (patientProfile && (inAuthGroup || inAmbulanceGroup)) {
+        } else if (isSetupComplete && (inAuthGroup || inAmbulanceGroup)) {
           router.replace('/(patient)/home')
         }
       } else if (!role && inAuthGroup) {

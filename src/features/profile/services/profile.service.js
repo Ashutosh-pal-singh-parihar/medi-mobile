@@ -13,7 +13,7 @@ export const profileService = {
     const { data, error } = await supabase
       .from(TABLES.PATIENT_PROFILES)
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (error) throw error;
@@ -30,7 +30,7 @@ export const profileService = {
         ...profileData,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', userId)
+      .eq('user_id', userId)
       .select()
       .maybeSingle();
 
@@ -48,7 +48,7 @@ export const profileService = {
         avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', userId)
+      .eq('user_id', userId)
       .select()
       .maybeSingle();
 

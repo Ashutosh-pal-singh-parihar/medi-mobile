@@ -30,17 +30,19 @@ export default function PatientSetupScreen() {
   const CONDITIONS = ['Diabetes', 'Hypertension', 'Asthma', 'Heart Disease', 'Thyroid', 'Kidney', 'Obesity', 'None'];
 
   // Step 1 Data
-  const [fullName, setFullName] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('');
-  const [bloodGroup, setBloodGroup] = useState('');
-  const [avatar, setAvatar] = useState(null);
+  const { patientProfile } = useAuthStore();
+  const [fullName, setFullName] = useState(patientProfile?.full_name || '');
+  const [whatsappNumber, setWhatsappNumber] = useState(patientProfile?.whatsapp_number || ''); 
+  const [age, setAge] = useState(patientProfile?.age?.toString() || '');
+  const [gender, setGender] = useState(patientProfile?.gender || '');
+  const [bloodGroup, setBloodGroup] = useState(patientProfile?.blood_group || '');
+  const [avatar, setAvatar] = useState(patientProfile?.avatar_url || null);
 
   // Step 2 Data
-  const [conditions, setConditions] = useState([]);
-  const [allergies, setAllergies] = useState('');
-  const [emergencyContactName, setEmergencyContactName] = useState('');
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [conditions, setConditions] = useState(patientProfile?.known_conditions || []);
+  const [allergies, setAllergies] = useState(patientProfile?.allergies || '');
+  const [emergencyContactName, setEmergencyContactName] = useState(patientProfile?.emergency_contact_name || '');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(patientProfile?.emergency_contact_phone || '');
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -57,8 +59,8 @@ export default function PatientSetupScreen() {
 
   const handleNext = () => {
     if (step === 1) {
-      if (!fullName || !age || !gender || !bloodGroup) {
-        Alert.alert(t('error_generic'), t('error_generic'));
+      if (!fullName || !age || !gender || !bloodGroup || !whatsappNumber) {
+        Alert.alert(t('error_generic'), 'Please fill in all basic details including WhatsApp number');
         return;
       }
       setStep(2);
@@ -91,6 +93,7 @@ export default function PatientSetupScreen() {
       const profileData = {
         user_id: user.id,
         full_name: fullName,
+        whatsapp_number: whatsappNumber,
         age: parseInt(age),
         gender,
         blood_group: bloodGroup,
@@ -124,6 +127,7 @@ export default function PatientSetupScreen() {
       </View>
 
       <Input label={t('full_name')} value={fullName} onChangeText={setFullName} icon="person-outline" autoCapitalize="words" autoCorrect={false} autoFocus={false} blurOnSubmit={true} returnKeyType="done" />
+      <Input label="WhatsApp Number" value={whatsappNumber} onChangeText={setWhatsappNumber} keyboardType="phone-pad" icon="logo-whatsapp" placeholder="+91 98765 43210" />
       <Input label={t('age')} value={age} onChangeText={setAge} keyboardType="numeric" icon="calendar-outline" autoCorrect={false} autoFocus={false} blurOnSubmit={true} returnKeyType="done" />
 
       <Text style={styles.label}>{t('gender')}</Text>

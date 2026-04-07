@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const [isEditModalVisible, setEditModalVisible] = useState(false);
   const [editData, setEditData] = useState({
     full_name: patientProfile?.full_name || '',
+    whatsapp_number: patientProfile?.whatsapp_number || '',
     emergency_contact_name: patientProfile?.emergency_contact_name || '',
     emergency_contact_phone: patientProfile?.emergency_contact_phone || '',
   });
@@ -76,6 +77,7 @@ export default function ProfileScreen() {
   const sections = [
     { title: t('health_background'), items: [
       { icon: 'person-outline', label: t('age'), value: `${patientProfile?.age || 'N/A'}` },
+      { icon: 'logo-whatsapp', label: 'WhatsApp', value: patientProfile?.whatsapp_number || 'N/A' },
       { icon: 'transgender-outline', label: t('gender'), value: t(patientProfile?.gender?.toLowerCase()) || 'N/A' },
       { icon: 'water-outline', label: t('blood_group'), value: patientProfile?.blood_group || 'N/A' },
     ]},
@@ -105,7 +107,7 @@ export default function ProfileScreen() {
             onPress={() => setEditModalVisible(true)}
           >
             <Ionicons name="create-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.editBtnText}>{t('complete_setup')}</Text>
+            <Text style={styles.editBtnText}>{t('edit_profile')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -170,7 +172,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('complete_setup')}</Text>
+              <Text style={styles.modalTitle}>{t('edit_profile')}</Text>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
@@ -183,6 +185,15 @@ export default function ProfileScreen() {
                 value={editData.full_name}
                 onChangeText={(val) => setEditData(prev => ({ ...prev, full_name: val }))}
                 placeholder={t('full_name')}
+              />
+
+              <Text style={styles.inputLabel}>WhatsApp Number</Text>
+              <TextInput 
+                style={styles.input}
+                value={editData.whatsapp_number}
+                onChangeText={(val) => setEditData(prev => ({ ...prev, whatsapp_number: val }))}
+                placeholder="+91..."
+                keyboardType="phone-pad"
               />
 
               <Text style={styles.inputLabel}>{t('contact_name')}</Text>
@@ -207,7 +218,7 @@ export default function ProfileScreen() {
                 onPress={handleSaveProfile}
                 disabled={loading}
               >
-                {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveBtnText}>{t('complete_setup')}</Text>}
+                {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.saveBtnText}>{t('edit_profile')}</Text>}
               </TouchableOpacity>
             </ScrollView>
           </View>

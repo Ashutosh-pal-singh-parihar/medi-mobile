@@ -1,7 +1,7 @@
 import { supabase } from '../../../config/supabase'
 
 export const aiService = {
-  async analyzeSymptoms({ messages = [], imageBase64, language = 'en', patientProfile }) {
+  async analyzeSymptoms({ messages = [], imageBase64, language = 'en', patientProfile, forceFinal = false }) {
     try {
       console.log('[AI Service] Calling analyze-symptoms (Attempting v12 Logic)...')
       
@@ -11,18 +11,14 @@ export const aiService = {
           messages: (messages || []).slice(-10),
           imageBase64: imageBase64 || null,
           language: language || 'en',
-          patientContext: {
-            age: patientProfile?.age || null,
-            gender: patientProfile?.gender || null,
-            knownConditions: patientProfile?.known_conditions || [],
-            allergies: patientProfile?.allergies || '',
-          },
+          patientProfile: patientProfile || null,
+          forceFinal: forceFinal,
         },
       })
 
       // If Supabase Gateway fails, handle it gracefully
-      if (error) {
-        console.error('[AI Service] Gateway Error:', error)
+      if (error || data?.error) {
+        console.error('[AI Service] Error:', error || data?.error)
           return {
             type: 'question',
             content: language === 'hi'
@@ -34,7 +30,20 @@ export const aiService = {
       }
 
       // LOG THE ACTUAL CONTENT FOR DEBUGGING
-      console.log('[AI Service] AI Provided Content:', data?.content?.substring(0, 50) + '...')
+      console.log('[AI Service] AI Provided Content:', data?.type);
+      
+      // FALLBACK TO ENSURE FIELDS ARE NEVER MISSING
+      if (data?.type === 'result') {
+        const isHindi = language === 'hi';
+        return {
+          ...data,
+          ai_summary: data.ai_summary || data.summary || (isHindi ? 'सारांश उपलब्ध नहीं है' : 'Summary unavailable'),
+          ai_recommendation: data.ai_recommendation || data.recommendation || (isHindi ? 'तत्काल चिकित्सा सहायता लें' : 'Seek immediate medical attention'),
+          ai_explanation: data.ai_explanation || data.explanation || (isHindi ? 'कोई अतिरिक्त जानकारी उपलब्ध नहीं है' : 'No additional clinical information available'),
+          risk_level: data.risk_level || 'LOW',
+          detected_symptoms: data.detected_symptoms || []
+        };
+      }
       
       return data;
 

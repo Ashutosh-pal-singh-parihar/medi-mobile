@@ -20,6 +20,9 @@ import { reportService } from '../../../features/triage/services/report.service'
 import { useLanguage } from '../../../hooks/useLanguage';
 import { Modal } from '../../../components/ui/Modal';
 import Avatar from '../../../components/ui/Avatar';
+import { notificationsService } from '../../../services/notifications.service';
+import { DoctorResponseCard } from '../../../components/DoctorResponseCard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TriageResultScreen() {
   const router = useRouter();
@@ -34,6 +37,8 @@ export default function TriageResultScreen() {
   const [deleting, setDeleting] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [doctorAction, setDoctorAction] = useState(null);
+  const [appointment, setAppointment] = useState(null);
   const sosTimerRef = useRef(null);
 
   // ── FETCH DATA ─────────────────────────────────────────────────────────────
@@ -42,12 +47,14 @@ export default function TriageResultScreen() {
       try {
         setLoading(true);
         
+        let currentResult = result;
         // 1. Fetch Session (Prioritize params.id if it's different from store)
         if (params.id && (!result || result.id !== params.id)) {
           const data = await triageService.getTriageSession(params.id);
           if (data) {
             setResult(data);
             setStoreResult(data);
+            currentResult = data;
           }
         } else if (!result && !params.id) {
           // Fallback if no result and no ID, maybe go home
@@ -55,7 +62,28 @@ export default function TriageResultScreen() {
           return;
         }
 
-        // 2. Fetch doctors for sharing
+        // 2. Fetch notifications/actions if sent to doctor
+        if (currentResult?.sent_to_doctor) {
+          const caseId = currentResult.id;
+          const [action, appt] = await Promise.all([
+            notificationsService.getDoctorActionsForCase(caseId),
+            notificationsService.getAppointmentForCase(caseId)
+          ]);
+          setDoctorAction(action);
+          setAppointment(appt);
+          
+          // Mark as seen
+          if (action || appt) {
+            const seenStr = await AsyncStorage.getItem('seen_notifications') || '[]';
+            const seen = JSON.parse(seenStr);
+            const actionId = action?.id || appt?.id;
+            if (actionId && !seen.includes(actionId)) {
+              await AsyncStorage.setItem('seen_notifications', JSON.stringify([...seen, actionId]));
+            }
+          }
+        }
+
+        // 3. Fetch doctors for sharing
         const docs = await triageService.getDoctors();
         setDoctors(docs);
       } catch (e) {
@@ -165,6 +193,17 @@ export default function TriageResultScreen() {
         </View>
 
         <RiskResultCard result={result} />
+
+        {/* Doctor Response Card */}
+        {doctorAction && (
+          <DoctorResponseCard 
+            action={doctorAction}
+            appointment={appointment}
+            doctorName={doctorAction.doctor?.full_name}
+            doctorSpec={doctorAction.doctor?.specialization}
+            hospitalName={doctorAction.doctor?.hospital_name}
+          />
+        )}
 
         <Animated.View entering={FadeInUp.delay(300)} style={styles.section}>
           <Text style={styles.sectionTitle}>{t('known_conditions')}</Text>

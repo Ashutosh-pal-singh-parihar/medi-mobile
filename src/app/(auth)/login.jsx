@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAv
 import { authService } from '../../features/auth/services/auth.service';
 import ScreenWrapper from '../../components/layout/ScreenWrapper';
 import Input from '../../components/ui/Input';
+import { useRouter } from 'expo-router';
 import { theme } from '../../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +49,7 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => {/* Back handle */}}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
 
@@ -102,7 +104,7 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => {/* Signup router */}}>
+            <TouchableOpacity onPress={() => router.push('/signup')}>
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>

@@ -15,6 +15,9 @@ import useAuthStore from '../../../store/auth.store';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { Modal } from '../../../components/ui/Modal';
 import Avatar from '../../../components/ui/Avatar';
+import { notificationsService } from '../../../services/notifications.service';
+import { DoctorResponseCard } from '../../../components/DoctorResponseCard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ReportDetailScreen() {
   const router = useRouter();
@@ -30,6 +33,8 @@ export default function ReportDetailScreen() {
   const [deleting, setDeleting] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [doctorAction, setDoctorAction] = useState(null);
+  const [appointment, setAppointment] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,6 +46,26 @@ export default function ReportDetailScreen() {
         ]);
         setReport(reportData);
         setDoctors(doctorsData);
+
+        // Fetch notifications/actions if sent to doctor
+        if (reportData?.sent_to_doctor) {
+          const [action, appt] = await Promise.all([
+            notificationsService.getDoctorActionsForCase(id),
+            notificationsService.getAppointmentForCase(id)
+          ]);
+          setDoctorAction(action);
+          setAppointment(appt);
+          
+          // Mark as seen
+          if (action || appt) {
+            const seenStr = await AsyncStorage.getItem('seen_notifications') || '[]';
+            const seen = JSON.parse(seenStr);
+            const actionId = action?.id || appt?.id;
+            if (actionId && !seen.includes(actionId)) {
+              await AsyncStorage.setItem('seen_notifications', JSON.stringify([...seen, actionId]));
+            }
+          }
+        }
       } catch (e) {
         Alert.alert(t('error_generic'), t('error_generic'));
       } finally {
@@ -143,6 +168,17 @@ export default function ReportDetailScreen() {
             {new Date(report?.created_at).toLocaleDateString()} {new Date(report?.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
+
+        {/* Doctor Response Card */}
+        {doctorAction && (
+          <DoctorResponseCard 
+            action={doctorAction}
+            appointment={appointment}
+            doctorName={doctorAction.doctor?.full_name}
+            doctorSpec={doctorAction.doctor?.specialization}
+            hospitalName={doctorAction.doctor?.hospital_name}
+          />
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('patient')}</Text>

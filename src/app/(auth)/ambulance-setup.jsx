@@ -21,16 +21,18 @@ export default function AmbulanceSetupScreen() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
+  const { ambulanceProfile } = useAuthStore();
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
-    vehicle_number: '',
-    vehicle_type: 'Basic',
+    full_name: ambulanceProfile?.full_name || '',
+    phone: ambulanceProfile?.phone || '',
+    whatsapp_number: ambulanceProfile?.whatsapp_number || '',
+    vehicle_number: ambulanceProfile?.vehicle_number || '',
+    vehicle_type: ambulanceProfile?.vehicle_type || 'Basic',
   });
 
   const nextStep = () => {
     if (step === 1) {
-      if (!form.full_name || !form.phone || !form.vehicle_number) {
+      if (!form.full_name || !form.phone || !form.vehicle_number || !form.whatsapp_number) {
         return;
       }
       setStep(2);
@@ -44,6 +46,7 @@ export default function AmbulanceSetupScreen() {
         user_id: user.id,
         full_name: form.full_name,
         phone: form.phone,
+        whatsapp_number: form.whatsapp_number,
         vehicle_number: form.vehicle_number,
         vehicle_type: form.vehicle_type,
       };
@@ -90,6 +93,13 @@ export default function AmbulanceSetupScreen() {
                 keyboardType="phone-pad"
               />
               <Input
+                label="WhatsApp Number"
+                value={form.whatsapp_number}
+                onChangeText={(val) => setForm(prev => ({ ...prev, whatsapp_number: val }))}
+                placeholder="+91 98765 43210"
+                keyboardType="phone-pad"
+              />
+              <Input
                 label={t('vehicle_number')}
                 value={form.vehicle_number}
                 onChangeText={(val) => setForm(prev => ({ ...prev, vehicle_number: val }))}
@@ -128,6 +138,10 @@ export default function AmbulanceSetupScreen() {
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>{t('contact_phone')}:</Text>
                   <Text style={styles.summaryValue}>{form.phone}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>WhatsApp:</Text>
+                  <Text style={styles.summaryValue}>{form.whatsapp_number}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>{t('vehicle_number')}:</Text>
